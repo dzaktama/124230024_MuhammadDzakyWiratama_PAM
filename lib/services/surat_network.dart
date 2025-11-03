@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:projek_akhir_mobile/models/surat_model.dart';
 import 'package:projek_akhir_mobile/models/surat_detail_model.dart';
@@ -8,7 +9,10 @@ class SuratNetwork {
   final String baseUrl = 'https://api.alquran.cloud/v1';
 
   Future<AyatRandomModel?> getAyatRandom() async {
-    final uri = Uri.parse('$baseUrl/ayah/random/id.indonesian');
+    final random = Random();
+    int nomorAyatAcak = 1 + random.nextInt(6236 - 1); 
+
+    final uri = Uri.parse('$baseUrl/ayah/$nomorAyatAcak/id.indonesian');
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {

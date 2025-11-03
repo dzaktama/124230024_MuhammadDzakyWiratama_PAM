@@ -246,30 +246,21 @@ class _HomeScreenState extends State<HomeScreen> {
             FutureBuilder<AyatRandomModel?>(
               future: _ayatFuture,
               builder: (context, snapshot) {
+                Widget child;
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    child: const ListTile(title: Text("Memuat ayat..."))
+                  child = const Center(child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("Memuat ayat..."),
+                  ));
+                } else if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                  child = const ListTile(
+                    leading: Icon(Icons.error_outline, color: Colors.red),
+                    title: Text("Gagal Memuat Ayat"),
+                    subtitle: Text("Periksa koneksi internet Anda."),
                   );
-                }
-                if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    child: const ListTile(
-                      leading: Icon(Icons.error_outline, color: Colors.red),
-                      title: Text("Gagal Memuat Ayat"),
-                      subtitle: Text("Periksa koneksi internet Anda."),
-                    )
-                  );
-                }
-
-                final ayat = snapshot.data!;
-                return Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  child: Padding(
+                } else {
+                  final ayat = snapshot.data!;
+                  child = Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
@@ -294,6 +285,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                  );
+                }
+
+                return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(
+                      minHeight: 150,
+                    ),
+                    child: child,
                   ),
                 );
               },
