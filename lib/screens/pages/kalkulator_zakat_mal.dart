@@ -6,14 +6,14 @@ import 'package:projek_akhir_mobile/services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
-class BerlangananScreen extends StatefulWidget {
-  const BerlangananScreen({super.key});
+class kalkulatorScreen extends StatefulWidget {
+  const kalkulatorScreen({super.key});
 
   @override
-  State<BerlangananScreen> createState() => _BerlangananScreenState();
+  State<kalkulatorScreen> createState() => _kalkulatorScreenState();
 }
 
-class _BerlangananScreenState extends State<BerlangananScreen> {
+class _kalkulatorScreenState extends State<kalkulatorScreen> {
   final _hartaController = TextEditingController();
   final _currencyService = CurrencyService();
   final NotificationService _notificationService = NotificationService();
@@ -23,16 +23,24 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
   String _error = '';
   final double _nisabIdr = 85000000.0;
 
-  double _nisabUsd = 0.0;
-  double _nisabEur = 0.0;
-  double _nisabJpy = 0.0;
-
+  double _rateUsd = 0.0;
+  double _rateEur = 0.0;
+  double _rateJpy = 0.0;
+  double _rateSar = 0.0;
+  
+  String _mataUangInput = "IDR";
   String _hasilZakat = '';
 
   final formatter = NumberFormat.currency(
     locale: 'id_ID',
-    symbol: '',
+    symbol: 'Rp ',
     decimalDigits: 0,
+  );
+  
+  final formatterAsing = NumberFormat.currency(
+    locale: 'en_US',
+    symbol: '',
+    decimalDigits: 2,
   );
 
   @override
@@ -64,15 +72,17 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
       final double? rateUsd = rates['USD']?.value;
       final double? rateEur = rates['EUR']?.value;
       final double? rateJpy = rates['JPY']?.value;
+      final double? rateSar = rates['SAR']?.value;
 
-      if (rateUsd == null || rateEur == null || rateJpy == null) {
-        throw Exception('Rate mata uang (USD/EUR/JPY) tidak ditemukan');
+      if (rateUsd == null || rateEur == null || rateJpy == null || rateSar == null) {
+        throw Exception('Rate mata uang (USD/EUR/JPY/SAR) tidak ditemukan');
       }
 
       setState(() {
-        _nisabUsd = _nisabIdr * rateUsd;
-        _nisabEur = _nisabIdr * rateEur;
-        _nisabJpy = _nisabIdr * rateJpy;
+        _rateUsd = rateUsd;
+        _rateEur = rateEur;
+        _rateJpy = rateJpy;
+        _rateSar = rateSar;
         _isLoading = false;
       });
     } catch (e) {
@@ -86,26 +96,67 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
   void _hitungZakat() {
     final double? harta = double.tryParse(_hartaController.text);
     String hasil = '';
-    double zakat = 0;
+    double zakatFinal = 0;
+    double hartaInIDR = 0;
+    String simbolMataUang = 'Rp ';
+    String notifBody = '';
+    
+    double nisabUsd = _nisabIdr * _rateUsd;
+    double nisabEur = _nisabIdr * _rateEur;
+    double nisabJpy = _nisabIdr * _rateJpy;
+    double nisabSar = _nisabIdr * _rateSar;
 
     if (harta == null) {
       hasil = 'Masukkan jumlah harta Anda';
-    } else if (harta < _nisabIdr) {
-      hasil = 'Harta Anda belum mencapai nisab (Rp ${formatter.format(_nisabIdr)}). Anda belum wajib membayar zakat mal.';
     } else {
-      zakat = harta * 0.025; 
-      hasil = 'Anda wajib membayar zakat mal sebesar:\nRp ${formatter.format(zakat)}';
+      String nisabFormatted = '';
+
+      if (_mataUangInput == 'USD') {
+        hartaInIDR = harta / _rateUsd;
+        simbolMataUang = '\$ ';
+        nisabFormatted = '\$ ${formatterAsing.format(nisabUsd)}';
+      } else if (_mataUangInput == 'EUR') {
+        hartaInIDR = harta / _rateEur;
+        simbolMataUang = '€ ';
+        nisabFormatted = '€ ${formatterAsing.format(nisabEur)}';
+      } else if (_mataUangInput == 'JPY') {
+        hartaInIDR = harta / _rateJpy;
+        simbolMataUang = '¥ ';
+        nisabFormatted = '¥ ${formatterAsing.format(nisabJpy)}';
+      } else if (_mataUangInput == 'SAR') {
+        hartaInIDR = harta / _rateSar;
+        simbolMataUang = 'SAR ';
+        nisabFormatted = 'SAR ${formatterAsing.format(nisabSar)}';
+      } else {
+        hartaInIDR = harta;
+        nisabFormatted = formatter.format(_nisabIdr);
+      }
+
+      if (hartaInIDR < _nisabIdr) {
+        hasil = 'Harta Anda belum mencapai nisab ($nisabFormatted). Anda belum wajib membayar zakat mal.';
+      } else {
+        zakatFinal = harta * 0.025; 
+        
+        if (_mataUangInput == 'IDR') {
+           hasil = 'Anda wajib membayar zakat mal sebesar:\n${formatter.format(zakatFinal)}';
+           notifBody = 'Zakat mal Anda adalah ${formatter.format(zakatFinal)}.';
+        } else {
+           hasil = 'Anda wajib membayar zakat mal sebesar:\n$simbolMataUang${formatterAsing.format(zakatFinal)}';
+           double zakatInIDR = hartaInIDR * 0.025;
+           notifBody = 'Zakat mal Anda adalah $simbolMataUang${formatterAsing.format(zakatFinal)} (Setara ${formatter.format(zakatInIDR)})';
+        }
+      }
     }
 
     setState(() {
       _hasilZakat = hasil;
     });
 
-    if (zakat > 0) {
+    if (zakatFinal > 0) {
       _notificationService.showNotification(
         id: 10,
         title: 'Perhitungan Zakat Selesai',
-        body: 'Zakat mal Anda adalah Rp ${formatter.format(zakat)}.',
+        body: notifBody,
         payload: 'zakat_result',
       );
     }
@@ -119,6 +170,7 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -131,11 +183,16 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
           ? Center(child: CircularProgressIndicator(color: _primaryColor))
           : _error.isNotEmpty
               ? Center(child: Text(_error))
-              : _buildKalkulator(Theme.of(context)),
+              : _buildKalkulator(theme),
     );
   }
 
   Widget _buildKalkulator(ThemeData theme) {
+    double nisabUsd = _nisabIdr * _rateUsd;
+    double nisabEur = _nisabIdr * _rateEur;
+    double nisabJpy = _nisabIdr * _rateJpy;
+    double nisabSar = _nisabIdr * _rateSar;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -161,29 +218,34 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "Nisab zakat mal setara 85 gram emas. Berikut adalah nilai konversinya (asumsi 85gr emas = Rp ${formatter.format(_nisabIdr)}):",
+                    "Nisab zakat mal setara 85 gram emas. Berikut adalah nilai konversinya (asumsi 85gr emas = ${formatter.format(_nisabIdr)}):",
                     style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
                   _buildInfoNisab(
                     'IDR (Rupiah)',
-                    'Rp ${formatter.format(_nisabIdr)}',
+                    formatter.format(_nisabIdr),
                     Icons.wallet_rounded,
                   ),
                   _buildInfoNisab(
                     'USD (Dolar AS)',
-                    '\$ ${formatter.format(_nisabUsd)}',
+                    '\$ ${formatterAsing.format(nisabUsd)}',
                     Icons.attach_money_rounded,
                   ),
                   _buildInfoNisab(
                     'EUR (Euro)',
-                    '€ ${formatter.format(_nisabEur)}',
+                    '€ ${formatterAsing.format(nisabEur)}',
                     Icons.euro_rounded,
                   ),
                   _buildInfoNisab(
                     'JPY (Yen Jepang)',
-                    '¥ ${formatter.format(_nisabJpy)}',
+                    '¥ ${formatterAsing.format(nisabJpy)}',
                     Icons.currency_yen_rounded,
+                  ),
+                  _buildInfoNisab(
+                    'SAR (Riyal Saudi)',
+                    'SAR ${formatterAsing.format(nisabSar)}',
+                    Icons.account_balance_wallet_outlined,
                   ),
                 ],
               ),
@@ -209,21 +271,49 @@ class _BerlangananScreenState extends State<BerlangananScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _hartaController,
-                    decoration: InputDecoration(
-                      prefixText: 'Rp ',
-                      labelText: "Total Harta (Tabungan, Emas, dll) dalam IDR",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _hartaController,
+                          decoration: InputDecoration(
+                            labelText: "Total Harta",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))],
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: DropdownButtonFormField<String>(
+                          value: _mataUangInput,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          ),
+                          items: <String>['IDR', 'USD', 'EUR', 'JPY', 'SAR']
+                              .map<DropdownMenuItem<String>>((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _mataUangInput = newValue!;
+                            });
+                          },
+                        ),
                       ),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ],
                   ),
                   const SizedBox(height: 20),
                   SizedBox(

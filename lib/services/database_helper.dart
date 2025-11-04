@@ -1,7 +1,3 @@
-// Pastikan Anda sudah menambahkan dependency sqflite di pubspec.yaml:
-// dependencies:
-//   sqflite: ^2.3.0
-//   path: any
 
 import 'package:sqflite/sqflite.dart' as sql;
 import 'package:path/path.dart';
@@ -36,9 +32,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         email TEXT,
-        passwordHash TEXT,
-        sudah_bayar INTEGER DEFAULT 0,
-        waktu_bayar TEXT
+        passwordHash TEXT
       )
     ''');
 

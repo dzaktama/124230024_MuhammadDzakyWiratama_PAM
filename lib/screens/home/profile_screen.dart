@@ -88,7 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: "Kalkulator Zakat Mal",
             icon: Icons.calculate_outlined,
             onPress: () {
-              Navigator.pushNamed(context, '/berlanganan');
+              Navigator.pushNamed(context, '/kalkulator');
             },
           ),
           MenuList(
